@@ -1,3 +1,4 @@
+#include <gtk/gtk.h>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -23,17 +24,40 @@ float get_cpu_temperature() {
     return tempC;
 }
 
-int main() {
-    while (true) {
-        system("clear");
-        float tempC = get_cpu_temperature();
-        if (tempC != -1.0f) {
-            cout << "CPU Temperature: " << tempC << "°C" << endl;
-        }
-        
-        // Sleep for 1 second before checking temperature again
-        sleep(1);
+static gboolean update_temperature(gpointer data) {
+    // Get CPU temperature
+    float tempC = get_cpu_temperature();
+    if (tempC != -1.0f) {
+        // Update label text
+        char tempStr[20];
+        snprintf(tempStr, sizeof(tempStr), "%.1f°C", tempC);
+        gtk_label_set_text(GTK_LABEL(data), tempStr);
     }
-    
+    return G_SOURCE_CONTINUE;
+}
+
+int main(int argc, char *argv[]) {
+    // Initialize GTK
+    gtk_init(&argc, &argv);
+
+    // Create a window
+    GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(window), "CPU Temperature");
+    gtk_window_set_default_size(GTK_WINDOW(window), 200, 100);
+    g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
+
+    // Create a label to display temperature
+    GtkWidget *label = gtk_label_new("");
+    gtk_container_add(GTK_CONTAINER(window), label);
+
+    // Update temperature label every second
+    g_timeout_add_seconds(1, update_temperature, label);
+
+    // Show the window
+    gtk_widget_show_all(window);
+
+    // Start the GTK main loop
+    gtk_main();
+
     return 0;
 }
