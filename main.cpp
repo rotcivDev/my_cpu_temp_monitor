@@ -32,8 +32,23 @@ static gboolean update_temperature(gpointer data) {
         char tempStr[20];
         snprintf(tempStr, sizeof(tempStr), "%.1f°C", tempC);
         gtk_label_set_text(GTK_LABEL(data), tempStr);
+
+        // Update text color based on temperature thresholds
+        GdkRGBA color;
+        if (tempC < 50.0f)
+            gdk_rgba_parse(&color, "green");
+        else if (tempC < 65.0f)
+            gdk_rgba_parse(&color, "orangered");
+        else
+            gdk_rgba_parse(&color, "red");
+
+        gtk_widget_override_color(GTK_WIDGET(data), GTK_STATE_FLAG_NORMAL, &color);
     }
     return G_SOURCE_CONTINUE;
+}
+
+static void close_window(GtkWidget *widget, gpointer data) {
+    gtk_main_quit();
 }
 
 int main(int argc, char *argv[]) {
@@ -44,7 +59,19 @@ int main(int argc, char *argv[]) {
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(window), "CPU Temperature");
     gtk_window_set_default_size(GTK_WINDOW(window), 200, 100);
-    g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
+    gtk_window_set_decorated(GTK_WINDOW(window), FALSE); // Remove window decorations
+
+    // Set window to always be on top
+    gtk_window_set_keep_above(GTK_WINDOW(window), TRUE);
+
+    // Set window to fixed position at top right corner
+    GdkScreen *screen = gdk_screen_get_default();
+    gint width = gdk_screen_get_width(screen);
+    gtk_window_move(GTK_WINDOW(window), width - 200, 0);
+
+    // Set window background to transparent
+    GdkRGBA color = {0, 0, 0, 0}; // Transparent RGBA color
+    gtk_widget_override_background_color(window, GTK_STATE_FLAG_NORMAL, &color);
 
     // Create a label to display temperature
     GtkWidget *label = gtk_label_new("");
@@ -53,7 +80,12 @@ int main(int argc, char *argv[]) {
     // Update temperature label every second
     g_timeout_add_seconds(1, update_temperature, label);
 
-    // Show the window
+    // Create a button to close the window
+    GtkWidget *button = gtk_button_new_with_label("Close");
+    g_signal_connect(button, "clicked", G_CALLBACK(close_window), NULL);
+    gtk_container_add(GTK_CONTAINER(window), button);
+
+    // Show the window and its contents
     gtk_widget_show_all(window);
 
     // Start the GTK main loop
